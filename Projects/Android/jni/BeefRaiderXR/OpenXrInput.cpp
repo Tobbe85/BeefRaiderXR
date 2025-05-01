@@ -761,7 +761,7 @@ void TBXR_InitActions( void )
     //Pico Devices
     {
         XrPath picoMixedRealityInteractionProfilePath;
-        CHECK_XRCMD(xrStringToPath(gAppState.Instance, "/interaction_profiles/pico/neo3_controller",
+        CHECK_XRCMD(xrStringToPath(gAppState.Instance, "/interaction_profiles/bytedance/pico_neo3_controller",
                                    &picoMixedRealityInteractionProfilePath));
 
         XrActionSuggestedBinding bindings[128];
@@ -994,7 +994,7 @@ void TBXR_CheckControllers(void)
                         gAppState.controllersPresent = TOUCH_CONTROLLERS;
                     }
                     else if (strcmp(pathString, "/interaction_profiles/bytedance/pico4_controller") == 0 ||
-                        strcmp(pathString, "/interaction_profiles/bytedance/pico3_controller") == 0)
+                        strcmp(pathString, "/interaction_profiles/bytedance/pico_neo3_controller") == 0)
                     {
                         gAppState.controllersPresent = PICO_CONTROLLERS;
                     }

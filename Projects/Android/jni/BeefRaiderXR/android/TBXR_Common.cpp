@@ -104,11 +104,6 @@ enum ConfigsEXT
     FOVEATION_SUBSAMPLED_ENABLED = 18,
     TRACKING_ORIGIN_HEIGHT
 };
-typedef XrResult (XRAPI_PTR *PFN_xrGetConfigPICO)(
-        XrSession                              session,
-        enum ConfigsEXT                        configIndex,
-        float *                                configData);
-PFN_xrGetConfigPICO    pfnXrGetConfigPICO;
 
 
 enum ConfigsSetEXT
@@ -125,17 +120,12 @@ enum ConfigsSetEXT
 	MRC_TEXTURE_ID = 9,
 };
 
-typedef XrResult (XRAPI_PTR *PFN_xrSetConfigPICO) (
-		XrSession                             session,
-		enum ConfigsSetEXT                    configIndex,
-		char *                                configData);
-PFN_xrSetConfigPICO    pfnXrSetConfigPICO;
-
 const char* const requiredExtensionNames_pico[] = {
 		XR_KHR_ANDROID_CREATE_INSTANCE_EXTENSION_NAME,
 		XR_EXT_PERFORMANCE_SETTINGS_EXTENSION_NAME,
 		XR_KHR_OPENGL_ES_ENABLE_EXTENSION_NAME,
-		XR_PICO_CONFIGS_EXT_EXTENSION_NAME,
+		XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME,
+		XR_BD_CONTROLLER_INTERACTION_EXTENSION_NAME,
         //FB extensions supported by Pico
         XR_FB_COMPOSITION_LAYER_SETTINGS_EXTENSION_NAME,
         XR_FB_PASSTHROUGH_EXTENSION_NAME};
@@ -1575,13 +1565,42 @@ void TBXR_InitRenderer(  ) {
 
 	if (strstr(gAppState.OpenXRHMD, "pico") != NULL)
 	{
-		xrGetInstanceProcAddr(gAppState.Instance,"xrSetConfigPICO", (PFN_xrVoidFunction*)(&pfnXrSetConfigPICO));
-		xrGetInstanceProcAddr(gAppState.Instance,"xrGetConfigPICO", (PFN_xrVoidFunction*)(&pfnXrGetConfigPICO));
+		PFN_xrEnumerateDisplayRefreshRatesFB pfnxrEnumerateDisplayRefreshRatesFB = NULL;
+		OXR(xrGetInstanceProcAddr(
+				gAppState.Instance,
+				"xrEnumerateDisplayRefreshRatesFB",
+				(PFN_xrVoidFunction *) (&pfnxrEnumerateDisplayRefreshRatesFB)));
 
-		pfnXrSetConfigPICO(gAppState.Session,TRACKING_ORIGIN,"0");
-		pfnXrSetConfigPICO(gAppState.Session,TRACKING_ORIGIN,"1");
+		OXR(pfnxrEnumerateDisplayRefreshRatesFB(
+				gAppState.Session, 0, &gAppState.NumSupportedDisplayRefreshRates, NULL));
 
-		pfnXrGetConfigPICO(gAppState.Session, GET_DISPLAY_RATE, &gAppState.currentDisplayRefreshRate);
+		gAppState.SupportedDisplayRefreshRates =
+				(float *) malloc(gAppState.NumSupportedDisplayRefreshRates * sizeof(float));
+		OXR(pfnxrEnumerateDisplayRefreshRatesFB(
+				gAppState.Session,
+				gAppState.NumSupportedDisplayRefreshRates,
+				&gAppState.NumSupportedDisplayRefreshRates,
+				gAppState.SupportedDisplayRefreshRates));
+		ALOGV("Supported Refresh Rates:");
+		for (uint32_t i = 0; i < gAppState.NumSupportedDisplayRefreshRates; i++)
+		{
+			ALOGV("%d:%f", i, gAppState.SupportedDisplayRefreshRates[i]);
+		}
+
+		OXR(xrGetInstanceProcAddr(
+				gAppState.Instance,
+				"xrGetDisplayRefreshRateFB",
+				(PFN_xrVoidFunction *) (&gAppState.pfnGetDisplayRefreshRate)));
+
+		OXR(gAppState.pfnGetDisplayRefreshRate(gAppState.Session,
+											   &gAppState.currentDisplayRefreshRate));
+		ALOGV("Current System Display Refresh Rate: %f", gAppState.currentDisplayRefreshRate);
+
+		OXR(xrGetInstanceProcAddr(
+				gAppState.Instance,
+				"xrRequestDisplayRefreshRateFB",
+				(PFN_xrVoidFunction *) (&gAppState.pfnRequestDisplayRefreshRate)));
+
 	}
 
 	int eyeW, eyeH;
